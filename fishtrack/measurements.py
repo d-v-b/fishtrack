@@ -1,4 +1,4 @@
-
+from .util import get_bbox
 
 def tail_angle(images, center, radius):
     """
@@ -46,7 +46,8 @@ def remotest_point(mask):
     if issparse(mask_):
         mask_ = array(mask_.todense())
 
-    rmin, rmax, cmin, cmax = get_bbox(mask_)
+    # without some padding, the bounding box can be too close to the edge of the mask
+    rmin, rmax, cmin, cmax = get_bbox(mask_, pad=20)
     mask_[rmin:rmax, cmin:cmax] = dist_tx(mask_[rmin:rmax, cmin:cmax])
     result = maximum_position(mask_)
 
