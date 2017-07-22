@@ -22,11 +22,16 @@ def get_bbox(img, pad=0):
 
     if issparse(img_):
         img_ = array(img_.todense())
-
+        
+    rmin, cmin = 0,0
+    rmax, cmax = array(img_.shape) - 1
+    
     rows = any(img_, axis=1)
     cols = any(img_, axis=0)
-    rmin, rmax = where(rows)[0][[0, -1]]
-    cmin, cmax = where(cols)[0][[0, -1]]
+    
+    if rows.any():
+        rmin, rmax = where(rows)[0][[0, -1]]
+        cmin, cmax = where(cols)[0][[0, -1]]
 
     return rmin - pad, rmax + pad, cmin - pad, cmax + pad
 
