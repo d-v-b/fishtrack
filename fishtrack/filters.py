@@ -1,45 +1,40 @@
 from .util import long_tail_threshold, get_bbox
 from .measurements import remotest_point
 
-
-def get_fish_mask(im, sigma=25, shrink_factor=.5, min_size=250, disk_size=14, return_sparse=True):
+def get_fish_mask(im, sigma=25, shrink_factors=[.05,.1], min_size=250, disk_size=5, return_sparse=True):
     """
     Get a binary mask representing the fish nervous system from a fluorescence image of a fish.
     :param im:
     :param sigma:
-    :param shrink_factor:
+    :param shrink_factors:
     :param min_size:
     :param disk_size:
     :param return_sparse:
     :return:
     """
 
-    from skimage.morphology import remove_small_objects
-
+    from skimage.morphology import remove_small_objects, disk, binary_opening
+    from scipy.sparse import coo_matrix
+    
     im_ = im.copy().astype('float32')
 
     # remove background
     im_bgr = remove_background(im, sigma=sigma)
 
     # estimate a threshold on the background-removed image
-    thr = long_tail_threshold(im_bgr, shrink_factor=shrink_factor)
+    thr = long_tail_threshold(im_bgr, shrink_factor=shrink_factors[0])
 
-    binarized = remove_small_objects(im_bgr > thr, min_size=min_size)
-    binarized_2 = binarized.copy()
-
-    if binarized.any():
-        # expand the mask
-        dilated = disk_dilate(binarized, disk_size=disk_size)
-        # threshold in the original image
-        thr_2 = long_tail_threshold(im_[dilated], nbins=300)
-        # remove speckles
-        binarized_2 = remove_small_objects((im_ * dilated) > thr_2, min_size=min_size)
+    mask = remove_small_objects(im_bgr > thr, min_size=min_size)
+    mask = disk_dilate(mask, disk_size=disk_size)
+    
+    # perform secondary thresholding on stuff in the mask
+    thr_2 = long_tail_threshold(im_[mask], shrink_factor=shrink_factors[1])
+    mask = mask * (im_ > thr_2)
 
     if return_sparse:
-        from scipy.sparse import coo_matrix
-        binarized_2 = coo_matrix(binarized_2)
+        mask = coo_matrix(mask)
 
-    return binarized_2
+    return mask
 
 
 # todo: remove this function, since it's not really necessary once you know the brain position in each image
