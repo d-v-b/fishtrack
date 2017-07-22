@@ -33,7 +33,6 @@ def align_brains(static, moving, brain_position):
     g2w[:2, -1] = -array(static_brain_cropped.shape) / 2
     
     # first align centers of mass in the field of view
-    c_of_mass = transform_centers_of_mass(static_brain_cropped, g2w, moving_brain_cropped, g2w) 
     params0 = None
     
     starting_affine = eye(3)
