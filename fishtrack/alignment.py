@@ -5,19 +5,18 @@ from .measurements import eigenvalues, remotest_point
 
 def align_brains(static, moving, brain_position):
     from dipy.align.imaffine import AffineRegistration, AffineMap
-    from dipy.align.transforms import RigidTransform2D 
+    from dipy.align.transforms import RigidTransform2D, TranslationTransform2D 
     from scipy.ndimage.measurements import center_of_mass
     from numpy import round, eye, array
 
     affreg = AffineRegistration(verbosity=0)
+    translation = TranslationTransform2D()
     rigid = RigidTransform2D()
 
     static_, moving_ = static.copy(), moving.copy()
 
     static_brain = get_brain(static_, return_sparse=False)
     moving_brain = get_brain(moving_, return_sparse=False)
-
-    fill_value = static[static_brain].min()
 
     if not moving_brain.any():
         return moving_, AffineMap(eye(3))
@@ -36,14 +35,15 @@ def align_brains(static, moving, brain_position):
     params0 = None
     
     starting_affine = eye(3)
-    tx = affreg.optimize(static_brain_cropped, moving_brain_cropped, rigid, params0, static_grid2world=g2w,
+    tx_translation = affreg.optimize(static_brain_cropped, moving_brain_cropped, translation, params0, static_grid2world=g2w,
                          moving_grid2world=g2w, starting_affine=starting_affine)
-
+    tx_rigid = affreg.optimize(static_brain_cropped, moving_brain_cropped, rigid, params0, static_grid2world=g2w,
+                               moving_grid2world=g2w, starting_affine=tx_translation.affine)
     
-    tx.domain_grid2world[:2, -1] = -brain_position
-    warped = tx.transform(moving_, sampling_grid_shape=moving_.shape)
+    tx_rigid.domain_grid2world[:2, -1] = -brain_position
+    warped = tx_rigid.transform(moving_, sampling_grid_shape=moving_.shape)
     
-    return warped, tx
+    return warped, tx_rigid
 
 
 def get_cropped_fish(image, phi, dydx, crop_window):
