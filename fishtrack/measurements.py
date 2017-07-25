@@ -14,18 +14,21 @@ def tail_angle(images, center, radius):
 
     cent_y, cent_x = center
 
-    x_c, y_c = circle_perimeter(cent_x, cent_y, radius=radius, shape=images[-1].shape)
-    angle_range = arctan2(y_c - cent_y, x_c - cent_x)
+    y_c, x_c = circle_perimeter(c=cent_x, r=cent_y, radius=radius, shape=images.shape[1:])
+    
+    angle_range = arctan2(y_c - cent_y, -(x_c - cent_x))
     inds = argsort(angle_range)
     keep = inds
     x_tail = x_c[keep]
     y_tail = y_c[keep]
     tail_arc = images[:, y_tail, x_tail]
+    
     angle = argmax(tail_arc, axis=1)
-    angle = unwrap(angle_range[keep][angle]) + pi
+    #angle = unwrap(angle_range[keep][angle])
+    angle = angle_range[keep][angle]
     angle = angle.astype('float32')
 
-    return angle, (x_tail, y_tail), angle_range
+    return angle, (x_tail, y_tail), angle_range[keep]
 
 
 def remotest_point(mask):
@@ -71,3 +74,4 @@ def eigenvalues(im):
     evecs = evecs[:, idx]
 
     return evals, evecs
+
