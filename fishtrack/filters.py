@@ -1,13 +1,13 @@
 from .util import long_tail_threshold, get_bbox
 from .measurements import remotest_point
 
-def get_fish_mask(im, sigma=25, shrink_factors=[.05,.1], min_size=250, disk_size=5, return_sparse=True):
+def get_fish_mask(im, sigma=25, shrink_factors=[.05,.1], min_sizes=[250,250], disk_size=5, return_sparse=True):
     """
     Get a binary mask representing the fish nervous system from a fluorescence image of a fish.
     :param im:
     :param sigma:
     :param shrink_factors:
-    :param min_size:
+    :param min_sizes:
     :param disk_size:
     :param return_sparse:
     :return:
@@ -24,12 +24,15 @@ def get_fish_mask(im, sigma=25, shrink_factors=[.05,.1], min_size=250, disk_size
     # estimate a threshold on the background-removed image
     thr = long_tail_threshold(im_bgr, shrink_factor=shrink_factors[0])
 
-    mask = remove_small_objects(im_bgr > thr, min_size=min_size)
+    mask = remove_small_objects(im_bgr > thr, min_size=min_sizes[0])
     mask = disk_dilate(mask, disk_size=disk_size)
     
     # perform secondary thresholding on stuff in the mask
     thr_2 = long_tail_threshold(im_[mask], shrink_factor=shrink_factors[1])
     mask = mask * (im_ > thr_2)
+    
+    # remove small objects again
+    mask = remove_small_objects(mask, min_size=min_sizes[1])
 
     if return_sparse:
         mask = coo_matrix(mask)
