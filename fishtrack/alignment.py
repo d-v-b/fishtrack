@@ -46,14 +46,12 @@ def align_brains(static, moving, brain_position):
     return warped, tx_rigid
 
 
-def get_cropped_fish(image, phi, dydx, crop_window):
+def get_cropped_fish(image, phi, brain_center, crop_window):
     """
-    given an image, a rotation angle, and a shift, apply the shift, then the rotation, then crop around the
-    center of the transformed image and apply a binary mask, returning an image of the fish nervous system on a
-    a background of 0s
+    given an image, a rotation angle, and a point, rotate around the point then crop
     :param image:
     :param phi:
-    :param dydx:
+    :param brain_center:
     :param crop_window:
     :return:
     """
@@ -61,14 +59,14 @@ def get_cropped_fish(image, phi, dydx, crop_window):
     from skimage.transform import rotate
     from numpy import roll, round, array, rad2deg
 
-    shifted = roll(image, round(dydx).astype('int'), axis=(0, 1))
-    rotated = rotate(shifted, angle=rad2deg(phi), mode='wrap', preserve_range=True, order=3)
+    # shifted = roll(image, round(dydx).astype('int'), axis=(0, 1))
+    brain_y, brain_x = brain_center
+    rotated = rotate(image, angle=rad2deg(phi), mode='wrap', preserve_range=True, order=3, center=(brain_x, brain_y))
 
-    mid = array(rotated.shape) // 2
     window_y, window_x = crop_window
 
-    # we take the transpose to cancel the effect of this kind of indexing
-    crop = rotated[mid[0] + window_y, mid[1] + window_x].T
+    # we take the transpose to cancel side effects of this kind of indexing
+    crop = rotated[brain_y + window_y, brain_x + window_x].T
 
     return crop
     
