@@ -47,9 +47,16 @@ def align_brains(static, moving, brain_position):
 
 
 def get_cropped_fish(image, phi, dydx, crop_window):
-    # given an image, a rotation angle, and a shift, apply the shift, then the rotation, then crop around the
-    # center of the transformed image and apply a binary mask, returning an image of the fish nervous system on a
-    # a background of 0s
+    """
+    given an image, a rotation angle, and a shift, apply the shift, then the rotation, then crop around the
+    center of the transformed image and apply a binary mask, returning an image of the fish nervous system on a
+    a background of 0s
+    :param image:
+    :param phi:
+    :param dydx:
+    :param crop_window:
+    :return:
+    """
 
     from skimage.transform import rotate
     from numpy import roll, round, array, rad2deg
@@ -66,10 +73,19 @@ def get_cropped_fish(image, phi, dydx, crop_window):
     return crop
     
 
-
 # point the tail of the fish toward the origin, parallel to the x-axis
 # im must be a binarized fish mask
 def orient_tail(im, brain_center, body_center, brain_size=20):
+    """
+    Given an masked fish image, a brain location, and a body location, find the angle of rotation that points that
+    aligns the fish to the x-axis and points the head of the fish in the direction of increasing x-values
+
+    :param im: binarized fish image
+    :param brain_center: position of the fish brain
+    :param body_center: position of the body
+    :param brain_size: size, in pixels, of the fish brain
+    :return: phi: the rotation angle needed to rotationally align the fish
+    """
     from numpy import pi, array, abs, argmin, eye
     from scipy.sparse import issparse
 
@@ -78,14 +94,12 @@ def orient_tail(im, brain_center, body_center, brain_size=20):
     if issparse(im_):
         im_ = array(im_.todense())
 
-    tform = eye(3)
-    dydx = (0,0)
     phi = 0
     y_, x_ = brain_center
     # assume the region in the image around the brain center is the brain
-    brain = im_[y_-brain_size : y_ + brain_size, x_ - brain_size : x_ + brain_size]
+    brain = im_[y_-brain_size: y_ + brain_size, x_ - brain_size: x_ + brain_size]
     if not brain.any():
-        return dydx, phi
+        return phi
         
     tail_y, tail_x = brain_center - body_center
 
@@ -103,12 +117,12 @@ def orient_tail(im, brain_center, body_center, brain_size=20):
     phi = candidate_phis[which_angle]
 
     # this vector translates the center of the brain to the center of the image
-    dydx = (im_.shape[0] / 2) - y_, (im_.shape[1] / 2) - x_
+    #dydx = (im_.shape[0] / 2) - y_, (im_.shape[1] / 2) - x_
     
-    return dydx, phi
+    return phi
     
 
-def centered_rotation(image, rotation_center, new_center, phi):
+def centered_rotation(rotation_center, new_center, phi):
     """
     Return an affine matrix for rotating an image around a center point, then translating the center to a new point
     """
