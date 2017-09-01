@@ -3,29 +3,30 @@ from .util import long_tail_threshold, cart2pol, angle_difference
 from .measurements import eigenvalues, remotest_point
 
 
-def align_brains(static, moving, brain_position):
+def align_brains(static, moving, brain_position, brain_size):
     from dipy.align.imaffine import AffineRegistration, AffineMap
-    from dipy.align.transforms import RigidTransform2D, TranslationTransform2D 
-    from scipy.ndimage.measurements import center_of_mass
+    from dipy.align.transforms import RigidTransform2D, TranslationTransform2D
     from numpy import round, eye, array
 
     affreg = AffineRegistration(verbosity=0)
     translation = TranslationTransform2D()
     rigid = RigidTransform2D()
 
+    # size of the brain, in pixels
+    brain_h, brain_w = brain_size
+
     static_, moving_ = static.copy(), moving.copy()
 
-    static_brain = get_brain(static_, return_sparse=False)
     moving_brain = get_brain(moving_, return_sparse=False)
 
     if not moving_brain.any():
         return moving_, AffineMap(eye(3))
 
     # isolate region of interest for registration
-    w_y = slice(brain_position[0] -40, brain_position[0] + 40)
-    w_x = slice(brain_position[1] -50, brain_position[1] + 50)
-    static_brain_cropped = static_[w_y,w_x]
-    moving_brain_cropped = moving_[w_y,w_x]
+    w_y = slice(brain_position[0] - brain_h//2, brain_position[0] + brain_h//2)
+    w_x = slice(brain_position[1] - brain_w//2, brain_position[1] + brain_w//2)
+    static_brain_cropped = static_[w_y, w_x]
+    moving_brain_cropped = moving_[w_y, w_x]
 
     # estimate rigid transformation between static and moving
     g2w = eye(3)
@@ -35,8 +36,8 @@ def align_brains(static, moving, brain_position):
     params0 = None
     
     starting_affine = eye(3)
-    tx_translation = affreg.optimize(static_brain_cropped, moving_brain_cropped, translation, params0, static_grid2world=g2w,
-                         moving_grid2world=g2w, starting_affine=starting_affine)
+    tx_translation = affreg.optimize(static_brain_cropped, moving_brain_cropped, translation, params0,
+                                     static_grid2world=g2w, moving_grid2world=g2w, starting_affine=starting_affine)
     tx_rigid = affreg.optimize(static_brain_cropped, moving_brain_cropped, rigid, params0, static_grid2world=g2w,
                                moving_grid2world=g2w, starting_affine=tx_translation.affine)
     
@@ -57,22 +58,22 @@ def get_cropped_fish(image, phi, brain_center, crop_window):
     """
 
     from skimage.transform import rotate
-    from numpy import roll, round, array, rad2deg
+    from numpy import roll, rad2deg
 
-    # shifted = roll(image, round(dydx).astype('int'), axis=(0, 1))
     brain_y, brain_x = brain_center
     rotated = rotate(image, angle=rad2deg(phi), mode='wrap', preserve_range=True, order=3, center=(brain_x, brain_y))
 
     window_y, window_x = crop_window
 
+    # center the brain in the image so we don't index outside the bounds when cropping
+    shifted = roll(rotated, (-brain_y + image.shape[0]//2, -brain_x + image.shape[1]//2), axis=(0, 1))
+
     # we take the transpose to cancel side effects of this kind of indexing
-    crop = rotated[brain_y + window_y, brain_x + window_x].T
+    crop = shifted[image.shape[0]//2 + window_y, image.shape[1]//2 + window_x].T.astype(image.dtype)
 
     return crop
     
 
-# point the tail of the fish toward the origin, parallel to the x-axis
-# im must be a binarized fish mask
 def orient_tail(im, brain_center, body_center, brain_size=20):
     """
     Given an masked fish image, a brain location, and a body location, find the angle of rotation that points that
