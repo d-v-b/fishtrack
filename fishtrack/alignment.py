@@ -61,15 +61,15 @@ def get_cropped_fish(image, phi, brain_center, crop_window):
     from numpy import roll, rad2deg
 
     brain_y, brain_x = brain_center
-    rotated = rotate(image, angle=rad2deg(phi), mode='wrap', preserve_range=True, order=3, center=(brain_x, brain_y))
+    # center the brain in the image so we don't index outside the bounds when cropping
+    shifted = roll(image, (-brain_y + image.shape[0]//2, -brain_x + image.shape[1]//2), axis=(0, 1))
+    rotated = rotate(shifted, angle=rad2deg(phi), mode='wrap', preserve_range=True, order=3,
+                     center=(image.shape[1]//2, image.shape[0]//2))
 
     window_y, window_x = crop_window
 
-    # center the brain in the image so we don't index outside the bounds when cropping
-    shifted = roll(rotated, (-brain_y + image.shape[0]//2, -brain_x + image.shape[1]//2), axis=(0, 1))
-
     # we take the transpose to cancel side effects of this kind of indexing
-    crop = shifted[image.shape[0]//2 + window_y, image.shape[1]//2 + window_x].T.astype(image.dtype)
+    crop = rotated[image.shape[0]//2 + window_y, image.shape[1]//2 + window_x].T.astype(image.dtype)
 
     return crop
     
